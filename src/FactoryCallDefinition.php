@@ -2,6 +2,9 @@
 
 namespace Assembly;
 
+use Assembly\Container\DefinitionResolver;
+use Assembly\Container\InvalidDefinition;
+use Interop\Container\ContainerInterface;
 use Interop\Container\Definition\FactoryCallDefinitionInterface;
 use Interop\Container\Definition\ReferenceDefinitionInterface;
 
@@ -30,6 +33,22 @@ class FactoryCallDefinition implements FactoryCallDefinitionInterface
     {
         $this->factory = $factory;
         $this->methodName = $methodName;
+    }
+
+    public function __invoke(ContainerInterface $container, callable $previous = null) {
+        $factory = $this->getFactory();
+        $methodName = $this->getMethodName();
+        $arguments = (array) $this->getArguments();
+        $arguments = array_map(function($item) use ($container) {
+            return DefinitionResolver::resolveSubDefinition($item, $container);
+        }, $arguments);
+
+        if (is_string($factory)) {
+            return call_user_func_array([$factory, $methodName], $arguments);
+        } elseif ($factory instanceof ReferenceDefinitionInterface) {
+            return call_user_func_array([$factory($container), $methodName], $arguments);
+        }
+        throw new InvalidDefinition(sprintf('Definition "%s" does not return a valid factory'));
     }
 
     /**

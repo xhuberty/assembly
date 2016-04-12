@@ -2,8 +2,10 @@
 
 namespace Assembly;
 
+use Assembly\Container\DefinitionResolver;
 use Assembly\ObjectInitializer\MethodCall;
 use Assembly\ObjectInitializer\PropertyAssignment;
+use Interop\Container\ContainerInterface;
 use Interop\Container\Definition\ObjectDefinitionInterface;
 use Interop\Container\Definition\ObjectInitializer\MethodCallInterface;
 use Interop\Container\Definition\ObjectInitializer\PropertyAssignmentInterface;
@@ -39,6 +41,34 @@ class ObjectDefinition implements ObjectDefinitionInterface
     {
         $this->className = $className;
         $this->constructorArguments = $constructorArguments;
+    }
+
+    public function __invoke(ContainerInterface $container, callable $previous = null) {
+        $reflection = new \ReflectionClass($this->getClassName());
+
+        // Create the instance
+        $constructorArguments = $this->getConstructorArguments();
+        $constructorArguments = array_map(function($item) use ($container) {
+            return DefinitionResolver::resolveSubDefinition($item, $container);
+        }, $constructorArguments);
+        $service = $reflection->newInstanceArgs($constructorArguments);
+
+        // Set properties
+        foreach ($this->getPropertyAssignments() as $propertyAssignment) {
+            $propertyName = $propertyAssignment->getPropertyName();
+            $service->$propertyName = DefinitionResolver::resolveSubDefinition($propertyAssignment->getValue(),$container);
+        }
+
+        // Call methods
+        foreach ($this->getMethodCalls() as $methodCall) {
+            $methodArguments = $methodCall->getArguments();
+            $methodArguments = array_map(function($item) use ($container) {
+                return DefinitionResolver::resolveSubDefinition($item, $container);
+            }, $methodArguments);
+            call_user_func_array([$service, $methodCall->getMethodName()], $methodArguments);
+        }
+
+        return $service;
     }
 
     /**
@@ -135,4 +165,5 @@ class ObjectDefinition implements ObjectDefinitionInterface
     {
         return $this->methodCalls;
     }
+
 }

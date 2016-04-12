@@ -2,6 +2,7 @@
 
 namespace Assembly;
 
+use Interop\Container\ContainerInterface;
 use Interop\Container\Definition\ParameterDefinitionInterface;
 
 class ParameterDefinition implements ParameterDefinitionInterface
@@ -19,6 +20,10 @@ class ParameterDefinition implements ParameterDefinitionInterface
         $this->value = $value;
     }
 
+    public function __invoke(ContainerInterface $container, callable $previous = null) {
+        return $this->value;
+    }
+    
     public function getValue()
     {
         return $this->value;

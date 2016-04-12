@@ -18,4 +18,9 @@ class Factory
     {
         return 'Hello';
     }
+
+    public static function staticCreateWithArgument($who = 'World')
+    {
+        return 'Hello '.$who;
+    }
 }

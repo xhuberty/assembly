@@ -50,7 +50,7 @@ class Container implements ContainerInterface
             throw EntryNotFound::fromId($id);
         }
 
-        $this->entries[$id] = $this->resolver->resolve($this->definitions[$id]);
+        $this->entries[$id] = $this->resolver->resolve($this->definitions[$id], $this);
 
         return $this->entries[$id];
     }

@@ -2,8 +2,10 @@
 
 namespace Assembly\Test;
 
+use Assembly\Container\Container;
 use Assembly\FactoryCallDefinition;
 use Assembly\Reference;
+use Assembly\Test\Container\FakeDefinitionProvider;
 
 class FactoryCallDefinitionTest extends \PHPUnit_Framework_TestCase
 {
@@ -47,4 +49,43 @@ class FactoryCallDefinitionTest extends \PHPUnit_Framework_TestCase
 
         $this->assertSame($definition, $definition->setArguments('param1'));
     }
+
+    /**
+     * @test
+     */
+    public function invoke_static_call()
+    {
+        $definition = new FactoryCallDefinition('Assembly\\Test\\Container\\Fixture\\Factory', 'staticCreate');
+        $container = new Container([]);
+        $this->assertSame("Hello", $definition($container));
+    }
+
+    /**
+     * @test
+     */
+    public function invoke_static_call_with_argument()
+    {
+        $definition = new FactoryCallDefinition('Assembly\\Test\\Container\\Fixture\\Factory', 'staticCreateWithArgument');
+        $definition->setArguments('ShelDon');
+        $container = new Container([]);
+        $this->assertSame("Hello ShelDon", $definition($container));
+    }
+
+    /**
+     * @test
+     */
+    public function invoke_static_call_with_reference()
+    {
+        $reference = new Reference('ref');
+        $definition = new FactoryCallDefinition($reference, 'staticCreate');
+        $provider = new FakeDefinitionProvider([
+            'foo' => $definition,
+        ]);
+
+        $container = new Container([
+            'ref' => 'Assembly\\Test\\Container\\Fixture\\Factory',
+        ], [$provider]);
+        $this->assertSame("Hello", $definition($container));
+    }
+    
 }

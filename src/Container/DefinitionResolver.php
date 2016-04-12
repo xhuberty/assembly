@@ -35,7 +35,7 @@ class DefinitionResolver
      * @throws InvalidDefinition
      * @throws EntryNotFound A dependency was not found.
      */
-    public function resolve(DefinitionInterface $definition)
+    public function resolve(DefinitionInterface $definition, ContainerInterface $container)
     {
         switch (true) {
             case $definition instanceof ReferenceDefinitionInterface:
@@ -49,19 +49,23 @@ class DefinitionResolver
 
                 // Create the instance
                 $constructorArguments = $definition->getConstructorArguments();
-                $constructorArguments = array_map([$this, 'resolveSubDefinition'], $constructorArguments);
+                $constructorArguments =  array_map(function($item) use ($container) {
+                    return DefinitionResolver::resolveSubDefinition($item, $container);
+                }, $constructorArguments);
                 $service = $reflection->newInstanceArgs($constructorArguments);
 
                 // Set properties
                 foreach ($definition->getPropertyAssignments() as $propertyAssignment) {
                     $propertyName = $propertyAssignment->getPropertyName();
-                    $service->$propertyName = $this->resolveSubDefinition($propertyAssignment->getValue());
+                    $service->$propertyName = $this->resolveSubDefinition($propertyAssignment->getValue(), $container);
                 }
 
                 // Call methods
                 foreach ($definition->getMethodCalls() as $methodCall) {
                     $methodArguments = $methodCall->getArguments();
-                    $methodArguments = array_map([$this, 'resolveSubDefinition'], $methodArguments);
+                    $methodArguments = array_map(function($item) use ($container) {
+                        return DefinitionResolver::resolveSubDefinition($item, $container);
+                    },  $methodArguments);
                     call_user_func_array([$service, $methodCall->getMethodName()], $methodArguments);
                 }
 
@@ -71,7 +75,9 @@ class DefinitionResolver
                 $factory = $definition->getFactory();
                 $methodName = $definition->getMethodName();
                 $arguments = (array) $definition->getArguments();
-                $arguments = array_map([$this, 'resolveSubDefinition'], $arguments);
+                $arguments = array_map(function($item) use ($container) {
+                    return DefinitionResolver::resolveSubDefinition($item, $container);
+                },  $arguments);
 
                 if (is_string($factory)) {
                     return call_user_func_array([$factory, $methodName], $arguments);
@@ -92,12 +98,14 @@ class DefinitionResolver
      * @param mixed|DefinitionInterface $value
      * @return mixed
      */
-    private function resolveSubDefinition($value)
+    public static function resolveSubDefinition($value, ContainerInterface $container)
     {
         if (is_array($value)) {
-            return array_map([$this, 'resolveSubDefinition'], $value);
-        } elseif ($value instanceof DefinitionInterface) {
-            return $this->resolve($value);
+            return array_map(function($item) use ($container) {
+                return self::resolveSubDefinition($item, $container);
+            }, $value);
+        } elseif ( is_callable($value) ) {
+            return $value($container);
         }
 
         return $value;
