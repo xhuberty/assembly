@@ -2,6 +2,7 @@
 
 namespace Assembly;
 
+use Interop\Container\ContainerInterface;
 use Interop\Container\Definition\DefinitionInterface;
 use Interop\Container\Definition\DefinitionProviderInterface;
 
@@ -12,6 +13,20 @@ class ArrayDefinitionProvider implements DefinitionProviderInterface
     public function __construct(array $arrayDefinitions = [])
     {
         $this->arrayDefinitions = $arrayDefinitions;
+    }
+
+    public function __invoke(ContainerInterface $container, callable $previous = null) {
+        $definitions = [];
+
+        foreach ($this->getArrayDefinitions() as $identifier => $definition) {
+            if (!$definition instanceof DefinitionInterface) {
+                $definition = new ParameterDefinition($definition);
+            }
+
+            $definitions[$identifier] = $definition;
+        }
+
+        return $definitions;
     }
 
     /**
